@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner Caméra</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Scanner Caméra</h1>
+            <a href="index.html" class="btn-back">Retour</a>
+        </header>
+
+        <main>
+            <div id="reader" width="600px"></div>
+
+            <div class="scan-display">
+                <span class="label">Code détecté</span>
+                <div id="result-display" class="result empty">Scannez un code...</div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const resultDisplay = document.getElementById('result-display');
+
+            function onScanSuccess(decodedText, decodedResult) {
+                // Handle the scanned code as you like, for example:
+                console.log(`Code matched = ${decodedText}`, decodedResult);
+                resultDisplay.textContent = decodedText;
+                resultDisplay.classList.remove('empty');
+
+                // Optional: Stop scanning after success
+                // html5QrcodeScanner.clear();
+            }
+
+            function onScanFailure(error) {
+                // handle scan failure, usually better to ignore and keep scanning.
+                // for example:
+                // console.warn(`Code scan error = ${error}`);
+            }
+
+            let html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader",
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                /* verbose= */ false);
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        });
+    </script>
+</body>
+
+</html>

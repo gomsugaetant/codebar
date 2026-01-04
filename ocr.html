@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner OCR</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Tesseract.js CDN -->
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Scanner OCR</h1>
+            <a href="index.html" class="btn-back">Retour</a>
+        </header>
+
+        <main>
+            <div class="ocr-controls">
+                <button id="btn-camera" class="btn-primary">Utiliser la Caméra</button>
+                <label for="file-upload" class="btn-secondary-action">
+                    Importer une image
+                    <input type="file" id="file-upload" accept="image/*" style="display: none;">
+                </label>
+            </div>
+
+            <div id="camera-container" class="hidden">
+                <video id="video" autoplay playsinline></video>
+                <button id="btn-capture" class="btn-capture">Capturer</button>
+                <button id="btn-close-camera" class="btn-close">Fermer</button>
+            </div>
+
+            <div id="preview-container" class="hidden">
+                <img id="image-preview" alt="Aperçu">
+                <div id="progress-bar" class="progress-bar hidden">
+                    <div class="progress-fill"></div>
+                </div>
+                <div id="status-text">Traitement en cours...</div>
+            </div>
+
+            <div class="scan-display">
+                <span class="label">Texte détecté</span>
+                <div id="result-display" class="result empty">En attente d'image...</div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const video = document.getElementById('video');
+            const canvas = document.createElement('canvas');
+            const imagePreview = document.getElementById('image-preview');
+            const resultDisplay = document.getElementById('result-display');
+            const progressBar = document.getElementById('progress-bar');
+            const progressFill = progressBar.querySelector('.progress-fill');
+            const statusText = document.getElementById('status-text');
+            const cameraContainer = document.getElementById('camera-container');
+            const previewContainer = document.getElementById('preview-container');
+
+            let stream = null;
+
+            // Camera handling
+            document.getElementById('btn-camera').addEventListener('click', async () => {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    video.srcObject = stream;
+                    cameraContainer.classList.remove('hidden');
+                    previewContainer.classList.add('hidden');
+                } catch (err) {
+                    console.error("Error accessing camera:", err);
+                    alert("Impossible d'accéder à la caméra");
+                }
+            });
+
+            document.getElementById('btn-close-camera').addEventListener('click', stopCamera);
+
+            document.getElementById('btn-capture').addEventListener('click', () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                const imageData = canvas.toDataURL('image/png');
+
+                stopCamera();
+                processImage(imageData);
+            });
+
+            // File upload handling
+            document.getElementById('file-upload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => processImage(e.target.result);
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            function stopCamera() {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+                cameraContainer.classList.add('hidden');
+            }
+
+            async function processImage(imageData) {
+                // Show preview
+                imagePreview.src = imageData;
+                previewContainer.classList.remove('hidden');
+                progressBar.classList.remove('hidden');
+                statusText.style.display = 'block';
+                resultDisplay.textContent = 'Analyse...';
+                resultDisplay.classList.add('empty');
+
+                try {
+                    const worker = await Tesseract.createWorker('fra', 1, {
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                progressFill.style.width = `${m.progress * 100}%`;
+                                statusText.textContent = `Analyse: ${Math.round(m.progress * 100)}%`;
+                            } else {
+                                statusText.textContent = m.status;
+                            }
+                        }
+                    });
+
+                    const { data: { text } } = await worker.recognize(imageData);
+
+                    resultDisplay.textContent = text || "Aucun texte détecté";
+                    resultDisplay.classList.remove('empty');
+                    await worker.terminate();
+                } catch (err) {
+                    console.error(err);
+                    resultDisplay.textContent = "Erreur lors de l'analyse";
+                } finally {
+                    progressBar.classList.add('hidden');
+                    statusText.style.display = 'none';
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
