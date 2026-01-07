@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecteur Code-barres</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Lecteur Code-barres</h1>
+            <div class="header-controls">
+                <a href="lecteur.html" class="btn-icon" title="Scanner avec caméra">📷</a>
+                <a href="ocr.html" class="btn-icon" title="Scanner OCR">📝</a>
+                <div id="status-indicator" class="status ready">Prêt</div>
+            </div>
+        </header>
+
+        <main>
+            <div class="scan-display">
+                <span class="label">Dernier scan</span>
+                <div id="result-display" class="result empty">En attente...</div>
+            </div>
+
+            <div class="history-section">
+                <h2>Historique</h2>
+                <ul id="scan-history" class="history-list">
+                    <!-- Items will be added here -->
+                </ul>
+                <button id="clear-history" class="btn-secondary">Effacer l'historique</button>
+            </div>
+        </main>
+    </div>
+    <script type="module">
+        import CodeBarre from './CodeBarre.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const resultDisplay = document.getElementById('result-display');
+            const historyList = document.getElementById('scan-history');
+            const statusIndicator = document.getElementById('status-indicator');
+            const clearHistoryBtn = document.getElementById('clear-history');
+
+            // Initialize CodeBarre
+            const scanner = new CodeBarre({ SCAN_TIMEOUT: 200 });
+
+            // Start listening
+            scanner.listen(
+                (code) => {
+                    handleScan(code);
+                },
+                (error) => {
+                    console.error('Scan Error:', error);
+                    updateStatus('error');
+                },
+                () => {
+                    updateStatus('scanning');
+                }
+            );
+
+            function handleScan(code) {
+                // Update Display
+                resultDisplay.textContent = code;
+                resultDisplay.classList.remove('empty');
+
+                // Add to History
+                addToHistory(code);
+
+                // Reset Status
+                updateStatus('ready');
+            }
+
+            function addToHistory(code) {
+                const li = document.createElement('li');
+                li.className = 'history-item';
+
+                const codeSpan = document.createElement('span');
+                codeSpan.textContent = code;
+
+                const timeSpan = document.createElement('span');
+                timeSpan.className = 'timestamp';
+                const now = new Date();
+                timeSpan.textContent = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+                li.appendChild(codeSpan);
+                li.appendChild(timeSpan);
+
+                // Insert at the top
+                historyList.insertBefore(li, historyList.firstChild);
+            }
+
+            function updateStatus(state) {
+                if (state === 'scanning') {
+                    statusIndicator.textContent = 'Lecture...';
+                    statusIndicator.className = 'status scanning';
+                } else if (state === 'error') {
+                    statusIndicator.textContent = 'Erreur';
+                    statusIndicator.className = 'status error';
+                } else {
+                    statusIndicator.textContent = 'Prêt';
+                    statusIndicator.className = 'status ready';
+                }
+            }
+
+            clearHistoryBtn.addEventListener('click', () => {
+                historyList.innerHTML = '';
+                resultDisplay.textContent = 'En attente...';
+                resultDisplay.classList.add('empty');
+            });
+
+            // Example of using close (optional, e.g., on page unload)
+            window.addEventListener('beforeunload', () => {
+                scanner.close();
+            });
+        });
+    </script>
+</body>
+
+</html>
